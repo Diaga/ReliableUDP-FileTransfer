@@ -38,6 +38,7 @@ int bind_socket(int socket_handler, long port) {
 
 // Initializes packet[] and acknowledgement structs with default values
 void initialize_packets(struct packet packets[], struct ack *ack_ptr) {
+    ack_ptr->sequence = -1;
     for (int counter = 0; counter < SEGMENT_NUMBER; counter++) {
         packets[counter].sequence = -1;
         packets[counter].size_remaining = -1;
@@ -66,11 +67,11 @@ int check_all_packets_received(struct packet packets[], struct ack *ack_ptr) {
             return -1;
         }
         ack_ptr->data[counter] = '1';
-        if (packets[counter].size_remaining < BUFFER_SIZE) {
+        if (packets[counter].size_remaining == 0) {
             return counter;
         }
     }
-    return SEGMENT_NUMBER - 1;
+    return SEGMENT_NUMBER - 1; 
 }
 
 // Write data in packet[] struct to file
@@ -81,10 +82,11 @@ int write_data_to_file(FILE *file, struct packet packets[], int index) {
     for (int counter = 0; counter <= index; counter++) {
         size_t size = packets[counter].size_remaining > BUFFER_SIZE ? BUFFER_SIZE : packets[counter].size_remaining;
         size_t write_handler = fwrite(packets[counter].data, size, 1, file);
+
+        if (packets[counter].size_remaining == 0) {
+            return 1;
+        }
         if (write_handler != 1) {
-            if (packets[counter].size_remaining == 0) {
-                return 1;
-            }
             return -1;
         }
     }
@@ -186,7 +188,7 @@ int main(int argc, char *argv[]) {
             }
 
             // Send acknowledgments
-            int ack_handler = sendto(socket_handler, &pckt, sizeof(pckt), 0,
+            int ack_handler = sendto(socket_handler, &ack_ptr, sizeof(ack_ptr), 0,
                                      (const struct sockaddr *) &client, sizeof(client));
             if (ack_handler == -1) {
                 printf("\n[ERR] Error sending acknowledgements!\n");
@@ -206,7 +208,7 @@ int main(int argc, char *argv[]) {
             if (client_connected == 0) {
                 client_connected = 1;
                 time_start = time(NULL);
-                total_size = pckt.size_remaining + 500;
+                total_size = pckt.size_remaining + BUFFER_SIZE;
             }
 
             // Reset sleep counter

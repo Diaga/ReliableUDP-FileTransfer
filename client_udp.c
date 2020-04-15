@@ -4,65 +4,38 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
-#define SEGMENT_NUMBER 10
-#define BUFFER_SIZE 500
+#define SEGMENT_NUMBER 10 // Defines how many segment to send at one go
+#define BUFFER_SIZE 500   // Defines buffer sizes while sending and receiving payload
 
+// Struct that carries payload
 struct packet {
     int sequence;
     size_t size_remaining;
     char data[BUFFER_SIZE];
 };
 
+// Struct that carries acknowledgements
 struct ack {
     int sequence;
     char data[SEGMENT_NUMBER];
 };
 
-void initialize_packets(struct packet packets[]) {
+// Initializes packet[] and acknowledgement structs with default values
+void initialize_packets(struct packet packets[], struct ack *ack_ptr) {
+    ack_ptr->sequence = -1;
     for (int counter = 0; counter < SEGMENT_NUMBER; counter++) {
         packets[counter].sequence = 0;
         packets[counter].size_remaining = 0;
-    }
-}
-
-void initialize_ack(struct ack *ack_ptr) {
-    ack_ptr->sequence = -1;
-    for (int counter = 0; counter < SEGMENT_NUMBER; counter++) {
         ack_ptr->data[counter] = '-';
     }
 }
 
-int wait_for_all_ack(int socket_handler, struct ack *ack_ptr, struct packet packets[], struct sockaddr_in server) {
-    size_t len = sizeof(server);
-    initialize_ack(ack_ptr);
-    recvfrom(socket_handler, ack_ptr, sizeof(struct ack), MSG_WAITFORONE,
-             (struct sockaddr *) &server, (socklen_t *) &len);
-
-    // Check acknowledgements and resend lost packets
-    int should_wait_further = 0;
-    for (int counter = 0; counter < SEGMENT_NUMBER; counter++) {
-        if (ack_ptr->data[counter] == '0') {
-            int resend_handler = sendto(socket_handler, &packets[counter], sizeof(struct packet), 0,
-                                        (struct sockaddr *) &server, sizeof(server));
-            should_wait_further = 1;
-            if (resend_handler == -1) {
-                printf("Err: Error resending packet!\n");
-                return -1;
-            }
-        }
-    }
-
-    if (should_wait_further == 0) {
-        return 0;
-    }
-    return wait_for_all_ack(socket_handler, ack_ptr, packets, server);
-}
-
-// Returns:
-//  SUCCESS -> Number of packets filled successfully
-//  EOF ->  0
-//  ERROR -> -1
+// Fills packets by reading file
+// Returns: SUCCESS -> Number of packets filled successfully
+//          EOF     ->  0
+//          ERROR   -> -1
 int fill_all_packets(FILE *file, struct packet packets[], size_t *file_size_remaining,
                      int *sequence) {
     int number_of_packets = 0;
@@ -79,16 +52,45 @@ int fill_all_packets(FILE *file, struct packet packets[], size_t *file_size_rema
                 packets[counter].size_remaining >= BUFFER_SIZE ? BUFFER_SIZE : packets[counter].size_remaining;
 
         // Check guard conditions
-        if (read_result != 1) {
+        if (read_result != 1 && packets[counter].size_remaining == 0) {
             if (feof(file)) {
-                *file_size_remaining = 0;
                 return number_of_packets;
             }
-            printf("Err: Error reading file!");
+            printf("\n[ERR] Error reading file!\n");
             return -1;
         }
     }
     return number_of_packets;
+}
+
+// Waits till all acknowledgements received & resend lost packets
+// Returns:  0 -> All acknowledgements received
+//          -1 -> Error while sending lost packets
+int wait_for_all_ack(int socket_handler, struct ack *ack_ptr, struct packet packets[], struct sockaddr_in server) {
+
+    // Wait till ack received
+    recvfrom(socket_handler, ack_ptr, sizeof(struct ack), MSG_WAITFORONE,
+             NULL, NULL);
+
+    // Flag initialized for further waiting
+    int should_wait_further = 0;
+
+    // Check acknowledgements and resend lost packets
+    for (int counter = 0; counter < SEGMENT_NUMBER; counter++) {
+        if (ack_ptr->data[counter] == '0') {
+            int resend_handler = sendto(socket_handler, &packets[counter], sizeof(struct packet), 0,
+                                        (struct sockaddr *) &server, sizeof(server));
+            if (resend_handler == -1) {
+                printf("\n[ERR] Error resending packet!\n");
+                return -1;
+            }
+
+            // Flag set for waiting further
+            should_wait_further = 1;
+        }
+    }
+
+    return should_wait_further == 0 ? should_wait_further : wait_for_all_ack(socket_handler, ack_ptr, packets, server);
 }
 
 int main(int argc, char *argv[]) {
@@ -105,10 +107,10 @@ int main(int argc, char *argv[]) {
     // Initialize socket
     int socket_handler = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_handler == -1) {
-        printf("Err: Could not connect to the socket!\n");
+        printf("\n[ERR] Error creating the socket!\n");
         return -1;
     }
-    printf("Res: Socket created successfully!\n");
+    printf("[RES] Socket created successfully!\r");
 
     // Initialize server address
     struct sockaddr_in server;
@@ -124,38 +126,52 @@ int main(int argc, char *argv[]) {
     size_t file_size_remaining = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    // Initialize packet
+    // Initialize packet and ack structs
     struct packet packets[SEGMENT_NUMBER];
-    initialize_packets(packets);
-
-    // Initialize ack & number of packets to be sent
     struct ack ack_ptr;
-    int number_of_packets = 0;
+    initialize_packets(packets, &ack_ptr);
 
+    // Initialize program state variables
+    size_t total_size = file_size_remaining;
+    time_t time_start = time(NULL);
+
+    // Loop till file sent
     for (;;) {
-        number_of_packets = fill_all_packets(file, packets, &file_size_remaining, &sequence);
-        if (number_of_packets <= 0) {
-            break;
-        }
+        // Fill packets by reading file
+        int number_of_packets = fill_all_packets(file, packets, &file_size_remaining, &sequence);
 
+        // Send all filled packets
         for (int counter = 0; counter < number_of_packets; counter++) {
             int send_handler = sendto(socket_handler, &packets[counter], sizeof(packets[counter]), 0,
                                       (struct sockaddr *) &server, sizeof(server));
-            printf("Sending %lu\n", packets[counter].size_remaining);
             if (send_handler == -1) {
-                printf("Err: Error sending packet!\n");
+                printf("\n[ERR] Error sending packet!\n");
                 return -1;
             }
+
+
+            printf("[ACT] Uploaded: %lu%% | Time elapsed: %lds\r",
+                   ((total_size - file_size_remaining) * 100) / total_size,
+                   time(NULL) - time_start);
+            fflush(stdout);
         }
 
+        // Wait for acknowledgements
         int ack_handler = wait_for_all_ack(socket_handler, &ack_ptr, packets, server);
         if (ack_handler == -1) {
             return -1;
         }
+
+        // If all file sent
+        if (file_size_remaining == 0) {
+            printf("\n[RES] Successfully sent the file!\n");
+            break;
+        }
     }
 
+    // Clean up file descriptors
     fclose(file);
-
     close(socket_handler);
+
     return 0;
 }
