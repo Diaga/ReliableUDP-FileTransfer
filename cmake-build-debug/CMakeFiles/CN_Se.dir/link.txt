@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/CN_Se.dir/server_tcp.c.o  -o CN_Se 
