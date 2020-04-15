@@ -6,7 +6,7 @@
 #include <string.h>
 #include <time.h>
 
-#define SEGMENT_NUMBER 10 // Defines how many segment to send at one go
+#define SEGMENT_NUMBER 5 // Defines how many segment to send at one go
 #define BUFFER_SIZE 500   // Defines buffer sizes while sending and receiving payload
 
 // Struct that carries payload
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
 
     // Initialize server address
     struct sockaddr_in server;
-    server.sin_addr.s_addr = INADDR_ANY;
+    inet_pton(AF_INET, "25.134.219.159", &(server.sin_addr));
     server.sin_family = AF_INET;
     server.sin_port = htons(server_port);
 
