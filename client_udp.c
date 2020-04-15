@@ -6,7 +6,7 @@
 #include <string.h>
 #include <time.h>
 
-#define SEGMENT_NUMBER 5 // Defines how many segment to send at one go
+#define SEGMENT_NUMBER 10 // Defines how many segment to send at one go
 #define BUFFER_SIZE 500   // Defines buffer sizes while sending and receiving payload
 
 // Struct that carries payload
