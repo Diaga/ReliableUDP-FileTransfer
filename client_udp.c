@@ -69,7 +69,7 @@ int fill_all_packets(FILE *file, struct packet packets[], size_t *file_size_rema
 int wait_for_all_ack(int socket_handler, struct ack *ack_ptr, struct packet packets[], struct sockaddr_in server) {
 
     // Wait till ack received
-    recvfrom(socket_handler, ack_ptr, sizeof(struct ack), MSG_WAITFORONE,
+    recvfrom(socket_handler, ack_ptr, sizeof(struct ack), 0,
              NULL, NULL);
 
     // Flag initialized for further waiting
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
 
     // Initialize server address
     struct sockaddr_in server;
-    inet_pton(AF_INET, "25.134.219.159", &(server.sin_addr));
+    server.sin_addr.s_addr = INADDR_ANY;
     server.sin_family = AF_INET;
     server.sin_port = htons(server_port);
 
@@ -122,6 +122,9 @@ int main(int argc, char *argv[]) {
     int sequence = 0;
     FILE *file;
     file = fopen("../video.mov", "r");
+    if (file == NULL) {
+        printf("\n[ERR] Error opening file for writing!\n");
+    }
     fseek(file, 0, SEEK_END);
     size_t file_size_remaining = ftell(file);
     fseek(file, 0, SEEK_SET);
