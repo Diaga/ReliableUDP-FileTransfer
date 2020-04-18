@@ -63,7 +63,7 @@ void copy_packet(struct packet pckt, struct packet packets[], int global_sequenc
 int check_all_packets_received(struct packet packets[], struct ack *ack_ptr) {
     int received_all = 1;
     for (int counter = 0; counter < SEGMENT_NUMBER; counter++) {
-        if (packets[counter].sequence == -1 || counter == 4) {
+        if (packets[counter].sequence == -1) {
             ack_ptr->data[counter] = '0';
             received_all = -1;
         }
@@ -176,8 +176,8 @@ int main(int argc, char *argv[]) {
                 }
 
                 // Reinitialize packets and ack pointer to receive more packets
+                initialize_packets(packets, &ack_ptr);
             }
-            initialize_packets(packets, &ack_ptr);
         } else if (sleep_counter == 2) {
             // Mark received and unreceived packets
             for (int counter = 0; counter < SEGMENT_NUMBER; counter++) {
