@@ -1,6 +1,12 @@
+# Received file
 video_received.mov
 
+# CMake 
 Makefile
 CMakeCache.txt
 cmake_install.cmake
 CMakeFiles/
+
+# Logs
+server_logs.txt
+client_logs.txt
