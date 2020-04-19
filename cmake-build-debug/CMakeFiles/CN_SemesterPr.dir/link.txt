@@ -1,1 +1,0 @@
-/usr/bin/cc -g   CMakeFiles/CN_SemesterPr.dir/client_tcp.c.o  -o CN_SemesterPr 

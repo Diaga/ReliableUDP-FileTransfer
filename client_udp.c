@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
     // Initialize file, sequence & size variables
     int sequence = 0;
     FILE *file;
-    file = fopen("../video.mov", "r");
+    file = fopen("video.mov", "r");
     if (file == NULL) {
         printf("\n[ERR] Error opening file for writing!\n");
     }

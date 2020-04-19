@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
 
     // Initialize file pointer
     FILE *file;
-    file = fopen("../video_received.mov", "w");
+    file = fopen("video_received.mov", "w");
     if (file == NULL) {
         printf("\n[ERR] Error opening file for writing!\n");
     }
