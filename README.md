@@ -3,6 +3,7 @@ This project aims to demonstrate a reliable UDP video file transfer over sockets
 - Reordering via sequence numbers at receiver.
 - Selective Repeat
 - Window Size of 10 UDP Segments through Stop N Wait
+- No timeout
 
 ## Compile
 - CMake (Requires CMake Version >=3.10)
