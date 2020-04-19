@@ -1,5 +1,5 @@
 # Reliable UDP File Transfer
-This project aims to demonstrate a reliable UDP transfer over sockets written in C language for Linux. The build process is supported through CMake to make it more efficient. The following requirements were kept in mind while imbuing reliability to UDP:
+This project aims to demonstrate a reliable UDP video file transfer over sockets written in C language for Linux. The build process is supported through CMake to make it more efficient. The following requirements were kept in mind while imbuing reliability to UDP:
 - Reordering via sequence numbers at receiver.
 - Selective Repeat
 - Window Size of 10 UDP Segments through Stop N Wait
